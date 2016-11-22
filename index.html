@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Neural tests</title>
+	<script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
+	<script type="text/javascript" src="./synaptic.min.js"></script>
+</head>
+<body>
+	<div class="container">
+		<img id="input" src="./img/input_1.jpg" />
+		<img id="output" src="./img/output_4.png" />
+		<div class="output">
+			<img id="original" src="./img/original.jpg" />
+			<canvas id="nnoutput"></canvas>
+		</div>
+		<button id="train">Train</button>
+		<button id="stop">Stop</button>
+		<p>Itération : <span id="iterations"></span></p>
+
+		<div class="test">
+			<input type="file" id="fileUp" name="">
+			<img id="uploaded" src="">
+			<canvas id="trainedoutput"></canvas>
+		</div>
+		<button id="process">Process</button>
+	</div>
+	<script type="text/javascript">
+		'use strict';
+		const imageSize = 125;
+		const learningRate = .12;
+
+		var perceptron = null,
+		index = 0,
+		color_data = null,
+		filtered_data = null,
+		original_data = null,
+		canvas = null,
+		context = null,
+		size = imageSize * imageSize,
+		trial = 0,
+		px = null,
+		trainingStarted = false,
+		trainTimeout = null,
+		trained = null,
+		tcanvas = null,
+		tcontext = null
+
+		var getData = function(imageObj,context){
+
+	        context.drawImage(imageObj, 0, 0);
+
+	        var imageData = context.getImageData(0, 0, 125, 125);
+	        return imageData.data;
+		}
+
+		var train = function(){
+
+	        color_data = getData(document.getElementById('input'),context);
+	        filtered_data = getData(document.getElementById('output'),context);
+			original_data = getData(document.getElementById('original'),context);
+
+			if (!trainingStarted)
+			{
+				trainingStarted = true;
+				iteration();
+			}
+		}
+
+		var iteration = function(){
+			trial++;
+
+			for (index = 0; index < size; index+=2)
+			{
+				px = pixel(color_data, 0, 0);
+				px = px.concat(pixel(color_data, -1, -1));
+				px = px.concat(pixel(color_data, 0, -1));
+				px = px.concat(pixel(color_data, 1, -1));
+				px = px.concat(pixel(color_data, -1, 0));
+				px = px.concat(pixel(color_data, 1, 0));
+				px = px.concat(pixel(color_data, -1, 1));
+				px = px.concat(pixel(color_data, 0, 1));
+				px = px.concat(pixel(color_data, 1, 1));
+				perceptron.activate(px);
+				perceptron.propagate(.01/(1+.005*trial), pixel(filtered_data,0,0));
+			}
+			preview();
+		}
+
+		var pixel = function(data, ox, oy){
+			var y = index / 125 | 0;
+			var x = index % 125;
+
+			if (ox && (x + ox) > 0 && (x + ox) < 125)
+				x += ox;
+			if (oy && (y + oy) > 0 && (y + oy) < 125)
+				y += oy;
+
+			var red = data[((125 * y) + x) * 4];
+	        var green = data[((125 * y) + x) * 4 + 1];
+	        var blue = data[((125 * y) + x) * 4 + 2];
+
+	        return [red / 255, green / 255, blue / 255];
+		}
+
+		var preview = function(){
+			$('#iterations').text(trial);
+			
+			var imageData = context.getImageData(0, 0, 125, 125);
+			for (index = 0; index < size; index++)
+			{
+				var px = pixel(original_data, 0, 0);
+				px = px.concat(pixel(original_data, -1, -1));
+				px = px.concat(pixel(original_data, 0, -1));
+				px = px.concat(pixel(original_data, 1, -1));
+				px = px.concat(pixel(original_data, -1, 0));
+				px = px.concat(pixel(original_data, 1, 0));
+				px = px.concat(pixel(original_data, -1, 1));
+				px = px.concat(pixel(original_data, 0, 1));
+				px = px.concat(pixel(original_data, 1, 1));
+				var rgb = perceptron.activate(px);
+				imageData.data[index * 4] = (rgb[0] )* 255;
+				imageData.data[index * 4 + 1] = (rgb[1] ) * 255;
+				imageData.data[index * 4 + 2] = (rgb[2] ) * 255;
+			}
+			context.putImageData(imageData,0,0);
+			
+			if(trial < 5000)
+				trainTimeout = setTimeout(iteration, 100);
+		}
+
+		var stop = function(){
+			clearTimeout(trainTimeout);
+			trainingStarted = false;
+		}
+
+		var handleFile = function(e){
+			let input = e.target;
+			if (input.files && input.files[0]) {
+                    var reader = new FileReader();
+
+                    reader.onload = function (e) {
+                        $('#uploaded').attr('src', e.target.result);
+                    }
+                    reader.readAsDataURL(input.files[0]);
+                }
+		}
+
+		var processTrained = function(){
+			let original_data_u = getData(document.getElementById('uploaded'),tcontext);
+			var imageData = tcontext.getImageData(0, 0, 125, 125);
+			
+			for (index = 0; index < size; index++)
+			{
+				var px = pixel(original_data_u, 0, 0);
+				px = px.concat(pixel(original_data_u, -1, -1));
+				px = px.concat(pixel(original_data_u, 0, -1));
+				px = px.concat(pixel(original_data_u, 1, -1));
+				px = px.concat(pixel(original_data_u, -1, 0));
+				px = px.concat(pixel(original_data_u, 1, 0));
+				px = px.concat(pixel(original_data_u, -1, 1));
+				px = px.concat(pixel(original_data_u, 0, 1));
+				px = px.concat(pixel(original_data_u, 1, 1));
+				var rgb = trained.activate(px);
+				imageData.data[index * 4] = (rgb[0] )* 255;
+				imageData.data[index * 4 + 1] = (rgb[1] ) * 255;
+				imageData.data[index * 4 + 2] = (rgb[2] ) * 255;
+			}
+			tcontext.putImageData(imageData,0,0);
+		}
+
+		function init(event){
+			canvas = canvas || document.getElementById('nnoutput');
+			canvas.height = canvas.width = imageSize;
+    		context = context || canvas.getContext('2d');
+
+			tcanvas = tcanvas || document.getElementById('trainedoutput');
+			tcanvas.height = tcanvas.width = imageSize;
+    		tcontext = tcanvas.getContext('2d');
+
+			trial = 0;
+			perceptron = new synaptic.Architect.Perceptron(27,8,6,3);
+
+			$.get('rn2.json',function(res){
+				trained = synaptic.Network.fromJSON(res);
+				document.querySelector('#process').addEventListener('click',processTrained);
+			},'json');
+
+
+			document.querySelector('#fileUp').addEventListener('change',handleFile);
+    		document.querySelector('#train').addEventListener('click',train);
+    		document.querySelector('#stop').addEventListener('click',stop);
+
+			console.log("ok");
+		}
+
+		window.addEventListener("DOMContentLoaded",init);
+
+		(function(console){
+
+		console.save = function(data, filename){
+
+		    if(!data) {
+		        console.error('Console.save: No data')
+		        return;
+		    }
+
+		    if(!filename) filename = 'console.json'
+
+		    if(typeof data === "object"){
+		        data = JSON.stringify(data, undefined, 4)
+		    }
+
+		    var blob = new Blob([data], {type: 'text/json'}),
+		        e    = document.createEvent('MouseEvents'),
+		        a    = document.createElement('a')
+
+		    a.download = filename
+		    a.href = window.URL.createObjectURL(blob)
+		    a.dataset.downloadurl =  ['text/json', a.download, a.href].join(':')
+		    e.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
+		    a.dispatchEvent(e)
+		 }
+		})(console)
+	</script>
+</body>
+</html>
