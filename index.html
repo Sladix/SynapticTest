@@ -7,8 +7,8 @@
 </head>
 <body>
 	<div class="container">
-		<img id="input" src="./img/input_1.jpg" />
-		<img id="output" src="./img/output_4.png" />
+		<img id="input" src="./img/input.png" />
+		<img id="output" src="./img/output_2.png" />
 		<div class="output">
 			<img id="original" src="./img/original.jpg" />
 			<canvas id="nnoutput"></canvas>
@@ -69,7 +69,7 @@
 		var iteration = function(){
 			trial++;
 
-			for (index = 0; index < size; index+=2)
+			for (index = 0; index < size; index++)
 			{
 				px = pixel(color_data, 0, 0);
 				px = px.concat(pixel(color_data, -1, -1));
@@ -81,7 +81,7 @@
 				px = px.concat(pixel(color_data, 0, 1));
 				px = px.concat(pixel(color_data, 1, 1));
 				perceptron.activate(px);
-				perceptron.propagate(.01/(1+.005*trial), pixel(filtered_data,0,0));
+				perceptron.propagate(.12/(1+.005*trial), pixel(filtered_data,0,0));
 			}
 			preview();
 		}
@@ -180,7 +180,7 @@
 			trial = 0;
 			perceptron = new synaptic.Architect.Perceptron(27,8,6,3);
 
-			$.get('rn2.json',function(res){
+			$.get('rn3.json',function(res){
 				trained = synaptic.Network.fromJSON(res);
 				document.querySelector('#process').addEventListener('click',processTrained);
 			},'json');

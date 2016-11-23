@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Neural tests</title>
+	<script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
+	<script type="text/javascript" src="./synaptic.min.js"></script>
+</head>
+<body>
+	<div id="drawer">
+		<img id="original" src="img/output_5.png"></img>
+		<canvas id="output" height="125" width="125"></canvas>
+	</div>
+	<button id="train">Train</button>
+	<p>Itérations : <span id="iterations"></span></p>
+	<div id="previews">
+		
+	</div>
+	<script type="text/javascript">
+		'use strict';
+		var perceptron = null;
+		(function($){
+			var canvas = null,
+			imgSize = 125,
+			iteration = 0,
+			isTraining = false,
+			to = null,
+			context = null,
+			image_data = null;
+
+			window['perceptron'] = perceptron;
+
+			var getData = function(imageObj){
+
+				canvas = canvas || document.getElementById('output');
+		        context = context || canvas.getContext('2d');
+
+		        context.drawImage(imageObj, 0, 0);
+
+		        var imageData = context.getImageData(0, 0, imgSize, imgSize);
+		        return imageData.data;
+			}
+
+			var train = function(){
+
+				isTraining = true;
+
+				iteration = 0;
+				to && clearTimeout(to);
+		        image_data = getData(document.getElementById('original'));
+				preview();
+			}
+
+			var iterate = function(){
+				
+				for (var x = 0; x < imgSize; x+=1)
+				{
+					for(var y = 0; y < imgSize; y+=1)
+					{
+						var dynamicRate = .01/(1+.005*iteration);
+						perceptron.activate([x/imgSize,y/imgSize]);
+						perceptron.propagate(dynamicRate, pixel(image_data,x,y));
+					}
+				}
+				preview();
+			}
+
+			var pixel = function(data,x,y){
+
+				var red = data[((imgSize * y) + x) * 4];
+		        var green = data[((imgSize * y) + x) * 4 + 1];
+		        var blue = data[((imgSize * y) + x) * 4 + 2];
+
+		        return [red / 255, green / 255, blue / 255];
+			}
+
+			var preview = function(){
+				$('#iterations').text(++iteration);
+				var imageData = context.getImageData(0, 0, imgSize, imgSize);
+				for (var x = 0; x < imgSize; x++)
+				{
+					for(var y = 0; y < imgSize; y++)
+					{
+						var rgb = perceptron.activate([x/imgSize,y/imgSize]);
+						imageData.data[((imgSize * y) + x) * 4] = (rgb[0] )* 255;
+						imageData.data[((imgSize * y) + x) * 4 + 1] = (rgb[1] ) * 255;
+						imageData.data[((imgSize * y) + x) * 4 + 2] = (rgb[2] ) * 255;
+					}
+				}
+				context.putImageData(imageData,0,0);
+				if(iteration % 1000 == 0){
+					var nc = document.createElement('canvas');
+					nc.width = nc.height = imgSize;
+					var ncc = nc.getContext('2d');
+					$('#previews').append($(nc));
+					ncc.putImageData(imageData,0,0);
+				}
+
+				if(isTraining)
+					requestAnimationFrame(iterate);
+			}
+
+			$(document).ready(function(){
+				canvas = document.getElementById("output");
+				context = canvas.getContext('2d');
+
+				// perceptron = new synaptic.Architect.Perceptron(2,20,20,3); -> rnclooney
+				perceptron = new synaptic.Architect.Perceptron(2,10,10,10,3);
+
+				document.getElementById('train').addEventListener('click',train);
+
+			})
+		})(jQuery)
+
+
+		
+
+		console.save = function(data, filename){
+
+		    if(!data) {
+		        console.error('Console.save: No data')
+		        return;
+		    }
+
+		    if(!filename) filename = 'console.json'
+
+		    if(typeof data === "object"){
+		        data = JSON.stringify(data, undefined, 4)
+		    }
+
+		    var blob = new Blob([data], {type: 'text/json'}),
+		        e    = document.createEvent('MouseEvents'),
+		        a    = document.createElement('a')
+
+		    a.download = filename
+		    a.href = window.URL.createObjectURL(blob)
+		    a.dataset.downloadurl =  ['text/json', a.download, a.href].join(':')
+		    e.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
+		    a.dispatchEvent(e)
+		 }
+	</script>
+</body>
+</html>
